@@ -1,79 +1,48 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+pragma solidity ^0.8.20;
 
-contract Metacrafters is IERC20{
-    string private name;
-    string private symbol;
-    address private owner;
-    mapping(address => uint256) private _balances;
-    uint256 private _totalSupply = 0;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-    mapping(address => mapping(address => uint256)) private _allowances;
+contract Metacrafter is ERC20, Ownable {
 
-    event Burn(address from, uint256 value);
-    event Mint(address to, uint256 value);
+    mapping(uint256 => uint256) public Prices;
 
-    constructor(string memory _name, string memory _symbol) {
-        name = _name;
-        symbol = _symbol;
-        owner = msg.sender;
+    constructor() ERC20("Degen", "DEG") Ownable(msg.sender) {
+        Prices[1] = 500;
+        Prices[2] = 200;
     }
 
-    modifier onlyOwner {
-        require(msg.sender == owner, "Only owner is allowed to perform this operation");
-        _;
+    function mintDGN(address _to, uint256 _amount) public onlyOwner {
+        _mint(_to, _amount);
     }
 
-    function totalSupply() external view returns (uint256) {
-        return _totalSupply;
+    function transferDGN(address _to, uint256 _amount) public {
+        require(balanceOf(msg.sender) >= _amount, "Transfer Failed: Insufficient balance.");
+        approve(msg.sender, _amount);
+        transferFrom(msg.sender, _to, _amount);
     }
 
-    function balanceOf(address account) external view returns (uint256) {
-        return _balances[account];
+    function showShopItems() external pure returns (string memory) {
+        string memory saleOptions = "The items on sale: {1} Degen NFT (500) {2} Degen Painting (200)";
+        return saleOptions;
     }
 
-    function transfer(address to, uint256 value) public returns (bool) {
-        
-        require(to != address(0), "Invalid receiver address");
-        require(_balances[msg.sender] >= value, "Insufficient balance");
-
-        _balances[msg.sender] -= value;
-        _balances[to] += value;
-        emit Transfer(msg.sender, to, value);
-        return true;
+    function redeemDGN(uint256 _item) public {
+        require(Prices[_item] > 0, "Item is not available.");
+        require(_item <= 2, "Item is not available.");
+        require(balanceOf(msg.sender) >= Prices[_item], "Redeem Failed: Insufficient balance.");
+        transfer(owner(), Prices[_item]);
+    }
+    
+    function burnDGN(uint256 _amount) public {
+        require(balanceOf(msg.sender) >= _amount, "Burn Failed: Insufficient balance.");
+        approve(msg.sender, _amount);
+        _burn(msg.sender, _amount);
     }
 
-
-    function burn(uint256 value) public returns(bool) {
-        require(_balances[msg.sender] >= value, "Insufficient balance");
-
-        _balances[msg.sender] -= value;
-        _totalSupply -= value;
-        emit Burn(msg.sender, value);
-        return true;
+    function getBalance() external view returns (uint256) {
+        return this.balanceOf(msg.sender);
     }
-
-    function mint(address to, uint256 value) public onlyOwner returns(bool) {
-        _balances[to] += value;
-        _totalSupply += value;
-        emit Mint(to, value);
-        return true;
-    }
-
-
-    function allowance(address owner, address spender) external view returns (uint256) {
-        return _allowances[owner][spender];
-    }
-
-
-    function approve(address spender, uint256 value) public pure returns (bool) {
-        return false;
-    }
-
-    function transferFrom(address from, address to, uint256 value) public pure returns (bool) {
-        return false;
-    }
-
 }
